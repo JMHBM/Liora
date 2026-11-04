@@ -1,0 +1,7 @@
+# Liora runtime. Install PyTorch yourself first so pip does not swap in a CPU wheel
+# over a ROCm or CUDA build. Then:
+#   pip install -r requirements.txt
+#   pip install "stable-audio-3 @ git+https://github.com/Stability-AI/stable-audio-3.git"
+numpy>=1.26
+soundfile>=0.12
+huggingface-hub>=0.26

@@ -1,0 +1,27 @@
+[project]
+name = "liora"
+version = "0.1.0"
+description = "Offline instrumental studio for Stable Audio 3 on consumer GPUs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "JMHBM" }]
+dependencies = [
+  "numpy>=1.26",
+  "soundfile>=0.12",
+  "huggingface-hub>=0.26",
+]
+
+[project.optional-dependencies]
+# Install the matching torch build BEFORE this extra. See README.
+model = []
+
+[project.scripts]
+liora = "liora.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["liora*"]
