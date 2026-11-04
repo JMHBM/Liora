@@ -99,7 +99,8 @@ T5Gemma sits inside those checkpoints, so the Gemma terms come with them. Then `
 ```powershell
 .\scripts\setup-windows.ps1
 .\.venv\Scripts\python.exe -m pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu126
-pip install "stable-audio-3 @ git+https://github.com/Stability-AI/stable-audio-3.git"
+.\.venv\Scripts\python.exe -m pip install --no-deps https://github.com/Stability-AI/stable-audio-3/archive/refs/heads/main.zip
+.\.venv\Scripts\python.exe -m pip install "einops>=0.8.2" "einops-exts>=0.0.4" "safetensors>=0.7.0" "transformers>=5.8.0" "numpy>=2.2.6" "packaging>=26.0"
 ```
 
 Launch **through ZLUDA** so CUDA calls hit the 6600M:

@@ -28,45 +28,79 @@ try {
   Progress 8
   Say "Installing Python 3.11"
 
-  $pySetup = Join-Path $env:TEMP "liora-python-3.11.9-amd64.exe"
-  if (-not (Test-Path $pySetup)) {
-    Download-File "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe" $pySetup
-  }
   $pyHome = Join-Path $InstallDir "python"
-  Progress 18
-  $pyProc = Start-Process -FilePath $pySetup -ArgumentList @(
-    "/quiet", "InstallAllUsers=0", "PrependPath=0", "Include_pip=1",
-    "Include_launcher=0", "Include_test=0", "Include_doc=0",
-    "TargetDir=$pyHome", "Shortcuts=0", "AssociateFiles=0"
-  ) -Wait -PassThru
-  if ($pyProc.ExitCode -ne 0) { throw "Python installer exited $($pyProc.ExitCode)" }
-
   $python = Join-Path $pyHome "python.exe"
-  if (-not (Test-Path $python)) { throw "Python was not installed to $pyHome" }
+  if (Test-Path $python) {
+    Say "Python 3.11 is already installed"
+    Progress 18
+  } else {
+    Say "Installing Python 3.11"
+    $pySetup = Join-Path $env:TEMP "liora-python-3.11.9-amd64.exe"
+    if (-not (Test-Path $pySetup)) {
+      Download-File "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe" $pySetup
+    }
+    Progress 18
+    $pyProc = Start-Process -FilePath $pySetup -ArgumentList @(
+      "/quiet", "InstallAllUsers=0", "PrependPath=0", "Include_pip=1",
+      "Include_launcher=0", "Include_test=0", "Include_doc=0",
+      "TargetDir=$pyHome", "Shortcuts=0", "AssociateFiles=0"
+    ) -Wait -PassThru
+    if ($pyProc.ExitCode -ne 0) { throw "Python installer exited $($pyProc.ExitCode)" }
+    if (-not (Test-Path $python)) { throw "Python was not installed to $pyHome" }
+  }
 
   Progress 30
-  Say "Creating the virtual environment"
   $venv = Join-Path $InstallDir "venv"
-  & $python -m venv $venv
-  if ($LASTEXITCODE -ne 0) { throw "venv failed" }
   $py = Join-Path $venv "Scripts\python.exe"
+  if (Test-Path $py) {
+    Say "Virtual environment is already in place"
+  } else {
+    Say "Creating the virtual environment"
+    & $python -m venv $venv
+    if ($LASTEXITCODE -ne 0) { throw "venv failed" }
+  }
 
   Progress 38
-  Say "Installing PyTorch for CUDA 12.6 (used by ZLUDA)"
-  & $py -m pip install --upgrade pip
-  & $py -m pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu126
-  if ($LASTEXITCODE -ne 0) {
-    Say "Pinned torch 2.7.1 was unavailable. Installing the current CUDA 12.6 wheels."
-    & $py -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126
-    if ($LASTEXITCODE -ne 0) { throw "PyTorch install failed" }
+  & $py -c "import torch,sys; sys.exit(0 if '+cu126' in torch.__version__ else 1)"
+  if ($LASTEXITCODE -eq 0) {
+    Say "PyTorch CUDA 12.6 is already installed"
+  } else {
+    Say "Installing PyTorch for CUDA 12.6 (used by ZLUDA)"
+    & $py -m pip install --upgrade pip
+    & $py -m pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu126
+    if ($LASTEXITCODE -ne 0) {
+      Say "Pinned torch 2.7.1 was unavailable. Installing the current CUDA 12.6 wheels."
+      & $py -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126
+      if ($LASTEXITCODE -ne 0) { throw "PyTorch install failed" }
+    }
   }
 
   Progress 68
   Say "Installing Liora and Stable Audio 3"
   & $py -m pip install -r (Join-Path $InstallDir "requirements.txt")
   if ($LASTEXITCODE -ne 0) { throw "requirements install failed" }
-  & $py -m pip install "stable-audio-3 @ git+https://github.com/Stability-AI/stable-audio-3.git"
+  # A zip, not a git clone. Windows setups often have no git on PATH, and
+  # --no-deps keeps the cu126 torch wheel from being replaced by the PyPI build.
+  $saZip = Join-Path $env:TEMP "stable-audio-3-main.zip"
+  if (-not (Test-Path $saZip)) {
+    Download-File "https://github.com/Stability-AI/stable-audio-3/archive/refs/heads/main.zip" $saZip
+  }
+  $saRoot = Join-Path $InstallDir "stable-audio-3"
+  if (Test-Path $saRoot) { Remove-Item -Recurse -Force $saRoot }
+  New-Item -ItemType Directory -Force -Path $saRoot | Out-Null
+  tar -xf $saZip -C $saRoot
+  $saSrc = Join-Path $saRoot "stable-audio-3-main"
+  if (-not (Test-Path $saSrc)) { throw "Stable Audio 3 source did not unpack" }
+  & $py -m pip install --no-deps $saSrc
   if ($LASTEXITCODE -ne 0) { throw "stable-audio-3 install failed" }
+  & $py -m pip install "einops>=0.8.2" "einops-exts>=0.0.4" "safetensors>=0.7.0" "transformers>=5.8.0" "numpy>=2.2.6" "packaging>=26.0" "tqdm>=4.67.3" "huggingface-hub>=1.7.1" "soundfile>=0.13.1"
+  if ($LASTEXITCODE -ne 0) { throw "stable-audio-3 dependencies failed" }
+  & $py -c "import torch,sys; sys.exit(0 if '+cu126' in torch.__version__ else 1)"
+  if ($LASTEXITCODE -ne 0) {
+    Say "Restoring the CUDA 12.6 PyTorch build"
+    & $py -m pip install --force-reinstall torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu126
+    if ($LASTEXITCODE -ne 0) { throw "Could not restore the CUDA PyTorch build" }
+  }
   & $py -m pip install -e $InstallDir
   if ($LASTEXITCODE -ne 0) { throw "liora install failed" }
 
@@ -154,7 +188,7 @@ rmdir /s /q "$InstallDir"
   $reg = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Liora"
   New-Item -Path $reg -Force | Out-Null
   New-ItemProperty -Path $reg -Name DisplayName -Value "Liora" -Force | Out-Null
-  New-ItemProperty -Path $reg -Name DisplayVersion -Value "0.2.0" -Force | Out-Null
+  New-ItemProperty -Path $reg -Name DisplayVersion -Value "0.2.1" -Force | Out-Null
   New-ItemProperty -Path $reg -Name Publisher -Value "JMHBM" -Force | Out-Null
   New-ItemProperty -Path $reg -Name InstallLocation -Value $InstallDir -Force | Out-Null
   New-ItemProperty -Path $reg -Name UninstallString -Value $uninstall -Force | Out-Null

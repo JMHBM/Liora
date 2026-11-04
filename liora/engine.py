@@ -77,7 +77,8 @@ class StableAudioEngine:
         except ImportError as exc:
             raise EngineNotReady(
                 "stable-audio-3 is not installed. Follow README: install the matching "
-                "PyTorch build first, then `pip install git+https://github.com/Stability-AI/stable-audio-3.git`. "
+                "PyTorch build first, then install the Stable Audio 3 zip with --no-deps "
+                "so that wheel is not replaced. "
                 "Run `python -m liora doctor` to see this machine."
             ) from exc
         return StableAudioModel
