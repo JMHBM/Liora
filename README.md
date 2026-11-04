@@ -3,6 +3,30 @@
 Offline instrumental studio for [Stable Audio 3](https://github.com/Stability-AI/stable-audio-3).
 Built for a MinisForum HX99G: Ryzen 9 6900HX and a Radeon RX 6600M (8 GB, gfx1032).
 
+## Windows installer
+
+`LioraSetup.exe` is the installable app. It does not contain the multi-gigabyte weights.
+During setup it downloads what the machine is missing:
+
+| Step | What it fetches |
+| --- | --- |
+| Python 3.11 | python.org, into the install folder, not your system PATH |
+| PyTorch CUDA 12.6 | the build ZLUDA translates |
+| Liora + stable-audio-3 | this app and Stability’s library |
+| ZLUDA (checked by default) | latest Windows zip from the lshqqytiger fork |
+| Small-Music (optional) | gated Hugging Face weights, needs a token |
+
+Default folder is `%LOCALAPPDATA%\Liora`. A desktop shortcut and a Start menu shortcut launch the studio.
+Uninstall is listed in Apps & Features.
+
+You still need the AMD Adrenalin driver already installed. ZLUDA also needs the AMD HIP SDK, which is AMD’s own installer and is not silent-bundled here. After setup, run **Liora Doctor** in the install folder. If it reports a Radeon, you are on the GPU path.
+
+Accept the Stability community license and the Gemma terms on the Small-Music model card before the weight download. The token box is only used for that download and the file is deleted when the download starts.
+
+## What the studio looks like
+
+The local studio (`python -m liora serve`, opened by the shortcut) is a dark synthwave panel: magenta actions, cyan labels, grid horizon. The same face is the browser studio.
+
 After the weights are on disk, generation does not use the network. Outputs are yours.
 The app does not try to sing — prompts are instrumental, and the negative prompt keeps vocals out.
 
